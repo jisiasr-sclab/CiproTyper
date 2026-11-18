@@ -1,0 +1,8 @@
+Reference sequences supplied by the authors (nucleotide CDS, start to stop codon).
+One record per species for each chromosomal gene; the species is read from the header
+(gene|Species|accession). Residues at GyrA-83/87, ParC-80/84 and RecN-346 are S/D, S/E and L in all records.
+
+gyrA : Escherichia coli CP058222.1 | Shigella sonnei AAVEOC010000165.1 | Salmonella enterica CP163542.1 | Klebsiella pneumoniae CP089383.1
+parC : Escherichia coli CP058222.1 | Shigella sonnei AAVEOC010000011.1 | Salmonella enterica CP163542.1 | Klebsiella pneumoniae CP089383.1
+recN : Escherichia coli CP058222.1 | Shigella sonnei AAVEOC010000127.1 | Salmonella enterica CP163542.1 | Klebsiella pneumoniae CP089383.1
+qnrB2.fasta : qnrB2, CP032523.1 (645 bp)      qnrS1.fasta : qnrS1, CP032523.1 (657 bp)

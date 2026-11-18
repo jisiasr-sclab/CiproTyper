@@ -1,0 +1,1 @@
+"""CiproTyper application package."""
