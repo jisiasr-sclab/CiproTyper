@@ -216,22 +216,24 @@
 
 <!-- THEORY -->
 <section id="p-theory" class="page">
-  <div class="page-head"><h2>Theory: the context-dependent grammar</h2>
-    <p>Ciprofloxacin binds through a water and Mg2+ bridge to a serine and an acidic residue in GyrA and ParC. A change at one position matters according to the others around it.</p></div>
-  <div class="band">
-    <h3>What the seven entries mean</h3>
-    <p>A ciprotype combines five amino acid positions with two qnr markers, in this order: <b>GyrA-83, GyrA-87, ParC-80, ParC-84, RecN-346, qnrB2 and qnrS1</b>. The first five entries are one-letter amino acid codes; the last two are 1 for detected or entered as present and 0 for not detected or entered as absent.</p>
-    <p>For example, <span class="mono">L-N-I-E-L-0-0</span> describes the five residues and neither qnr marker detected. The first four residues form the tetratype. The RecN-346 codon is shown separately because CTA and CTG both encode leucine but have different roles in the checkpoint rules.</p>
-    <p>These markers describe selected resistance-associated features. Finding a gene or codon does not measure its expression, and the diagram below is a schematic explanation rather than a molecular structure simulation.</p>
+  <div class="page-head"><h2>Theory</h2>
+    <p>Ciprofloxacin binds to GyrA and ParC through a water–magnesium bridge. The effect of a change at one binding position depends on the residues around it.</p>
   </div>
   <div class="band">
-    <h3>Explore a ciprotype</h3>
+    <h3>Reading a ciprotype</h3>
+    <p>Read the seven entries from left to right: <b>GyrA-83, GyrA-87, ParC-80, ParC-84, RecN-346, qnrB2, qnrS1.</b> For example, in <span class="mono">L-N-I-E-L-0-0</span>, the first four letters form the tetratype, the fifth gives the RecN residue, and the two zeros indicate that both qnr markers were reported absent. A 1 indicates presence. These marker values can also be entered manually.</p>
+    <h3>How CiproTyper chooses a prediction</h3>
+    <p><b>Tier 1.</b> For a known ciprotype, the reference-majority call uses matching isolates from the selected species and source. If that source has no match, CiproTyper pools matches across sources for the same species. A warning appears when fewer than five reference isolates match or the majority share is below 80%.</p>
+    <p><b>Tier 2.</b> For a ciprotype unseen in that species, the three checkpoints below determine the call. Tier 1 reports also show the checkpoints for comparison.</p>
+  </div>
+  <div class="band">
+    <h3>Explore the four drug-binding positions</h3>
     <div class="mech">
       <div><svg class="pocket" id="pocket" viewBox="0 0 640 330" role="img" aria-label="Schematic of the ciprofloxacin binding pocket"></svg>
         <p class="muted" style="font-size:.82rem;margin-top:6px">Schematic reading of the grammar, not a structure calculation. Compare with Figure 6 of the paper.</p></div>
       <div>
         <label for="t-sp">Species</label><select id="t-sp" style="margin-bottom:8px"></select>
-        <label>Common ciprotypes (tap one)</label><div class="pick" id="t-pick"></div>
+        <label>Common four-residue patterns (tap one)</label><div class="pick" id="t-pick"></div>
         <label for="t-custom">Or type four residues (GyrA-83, GyrA-87, ParC-80, ParC-84)</label>
         <input type="text" id="t-custom" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LNIE" style="text-transform:uppercase;font-family:var(--mono);margin-bottom:12px">
         <dl class="kv" id="t-kv"></dl>
@@ -239,28 +241,22 @@
       </div>
     </div>
   </div>
-  <div class="band"><h3>Grammar rules: three checkpoints</h3>
-    <p><b>Checkpoint 1: GyrA-83, GyrA-87, ParC-80 and ParC-84.</b> The four residues are read together, because a residue can be in both columns of the table (for example D and E). A call needs <b>all four residues in one column</b>: all in the Susceptible column is susceptible, all in the Resistant column is resistant. In any other case checkpoint 1 is <b>inconclusive</b>.</p>
-    <div id="cp1-static"></div>
-    <p><b>Checkpoint 2: RecN-346.</b> Leucine encoded by cta is susceptible. Leucine encoded by ctg, or phenylalanine, is resistant. Anything else is inconclusive.</p>
-    <p><b>Checkpoint 3: qnr genes.</b> qnrB2 and qnrS1 both absent is susceptible. Either or both present is resistant.</p>
-    <p><b>Combined.</b> Resistant if any evaluated checkpoint gives a resistant signal; otherwise the current rules return Susceptible. An inconclusive checkpoint contributes no call and is not evidence of susceptibility. When checkpoint 1 is inconclusive, checkpoints 2 and 3 decide.</p>
-    <p><b>The ParC S-K exception.</b> S at ParC-80 together with K at ParC-84 counts in the Resistant column when the two GyrA residues also fit that column. S alone does not trigger this exception.</p>
-    <p class="muted">A ciprotype that is in the reference isolates takes the phenotype of the majority of those isolates. A new ciprotype is called by the three checkpoints. The reference isolates carry no RecN-346 codon, so checkpoint 2 for ctg could not be scored on them. The hydrophobicity &lt;H&gt; in a result is not part of any checkpoint (<a href="#/calc">how it is calculated</a>).</p>
-  </div>
   <div class="band">
-    <h3>Reference majority or checkpoint rules</h3>
-    <p><b>Tier 1: a known ciprotype.</b> CiproTyper first looks for the same species, isolation source and full seven-part ciprotype in the reference collection. If no source-specific match exists, it uses matching isolates of that species from all sources and explains this in the result. The laboratory majority determines the call; an equal split gives Susceptible.</p>
-    <p><b>Tier 2: a ciprotype not represented for that species.</b> The three checkpoints determine the call. The checkpoints are also shown alongside Tier 1 results, but their explanation does not replace the reference-majority call. The two can disagree.</p>
-    <p>ST and RecN codon are not part of the Tier 1 lookup key. The RecN amino acid is part of the ciprotype; its codon contributes to Checkpoint 2. A warning appears when fewer than five reference isolates match or the majority share is below 80%. Reference support is not a calibrated probability for a new sample.</p>
-    <p class="muted">The interactive four-residue example above uses RecN leucine with no supplied codon and neither qnr marker present. Use <a href="#/predict">Predict</a> to enter the full marker combination and, when known, the RecN codon.</p>
+    <h3>The three checkpoints</h3>
+    <p><b>1. GyrA and ParC.</b> Read the four residues together. All four must fit the same column for that column’s call to apply. If neither column fits, the checkpoint is inconclusive.</p>
+    <div id="cp1-static"></div>
+    <p>The ParC S-K pair counts in the Resistant column when both GyrA residues also fit that column.</p>
+    <p><b>2. RecN-346.</b> Leucine encoded by CTA gives Susceptible. Leucine encoded by CTG, or phenylalanine, gives Resistant. Other or unknown states are inconclusive.</p>
+    <p><b>3. qnr markers.</b> Either marker present gives Resistant. Both absent gives Susceptible.</p>
+    <p>Any resistant checkpoint gives a combined Resistant call. Otherwise the rules give Susceptible. An inconclusive checkpoint casts no vote. <a href="#/calc">Helix hydrophobicity</a> is shown for comparison only.</p>
+    <p class="muted">The interactive example assumes RecN leucine with an unknown codon and both qnr markers absent. Use <a href="#/predict">Predict</a> for your sample’s full profile.</p>
   </div>
   <div class="band" id="t-valid-band" hidden><div id="t-valid"></div></div>
   <div class="band"><h3>Amino acid hydrophobicity (Eisenberg normalised consensus)</h3><div class="scroll"><table id="t-aa"></table></div></div>
 
   <div class="band">
     <h3>Sequence types and MLST</h3>
-    <p>Multilocus sequence typing (MLST) assigns a sequence type from seven housekeeping genes. CiproTyper uses the Achtman scheme for <i>E. coli</i> and <i>S. sonnei</i>, the Salmonella Achtman scheme for <i>S. enterica</i>, and the Diancourt scheme for <i>K. pneumoniae</i>. The STs recorded for the founding isolates come from Table S1.</p>
+    <p>Multilocus sequence typing (MLST) assigns a sequence type (ST) when all seven alleles match exactly and their combination has a registered profile. The table lists the Achtman schemes for <i>E. coli</i>, <i>S. sonnei</i> and <i>S. enterica</i>, and the Diancourt scheme for <i>K. pneumoniae</i>. Founding isolate STs come from Table S1.</p>
     <div class="scroll"><table>
       <thead><tr><th>Species</th><th>Seven housekeeping genes</th></tr></thead>
       <tbody>
@@ -269,36 +265,20 @@
         <tr><td><i>K. pneumoniae</i></td><td><i>gapA, infB, mdh, pgi, phoE, rpoB, tonB</i></td></tr>
       </tbody>
     </table></div>
-    <p><b>Locate, then look up.</b> A first search uses up to four representative alleles per locus to find the corresponding sequence in the assembly. The extracted sequence is compared with a dictionary of known alleles. A locus with a representative match but no exact dictionary match is searched against its full allele set.</p>
-    <p>An ST is assigned only when all seven alleles match exactly and their combination has a profile in the bundled data. A leading <span class="mono">~</span> marks a nearest-allele match, not an exact allele assignment. A missing locus or an unrepresented allele combination leaves the ST unassigned.</p>
-    <p>Allele sequences and profiles are supplied through <a href="https://github.com/tseemann/mlst" target="_blank" rel="noopener">Torsten Seemann's open-source <i>mlst</i> repository</a>. CiproTyper uses its own analysis routine with local reference files, rather than querying live PubMLST records for each prediction. Please cite PubMLST (Jolley et al., 2018) and the scheme sources listed under <a href="#/references">References</a>.</p>
-    <h4>Why a known ST may not be reported</h4>
-    <p>If a good-quality sequence does not match a known ST in the bundled data, two possible explanations are:</p>
-    <ol>
-      <li>The ST may already be listed in PubMLST but have been assigned after <b>31 December 2024</b>. Changes to PubMLST's data-access and redistribution terms limit the PubMLST-derived data bundled by the upstream <i>mlst</i> project to records available by that date.</li>
-      <li>The allele or seven-locus combination may be new and not yet represented in PubMLST.</li>
-    </ol>
-    <p>These possibilities do not prove that a sample has a new ST. Missing or fragmented loci, ambiguous bases, a reference-scheme mismatch or an MLST processing error can also prevent assignment. Check the assembly and current scheme records before describing an ST as new. The cutoff concerns PubMLST-derived data; other providers' schemes may have different update histories. See the <a href="https://github.com/tseemann/mlst/releases/tag/v2.33.0" target="_blank" rel="noopener">upstream release note</a>.</p>
+    <p>Up to four representative alleles per locus help locate the gene in the assembly. CiproTyper looks up the extracted sequence and searches the full allele set for a located gene if the lookup fails. A tilde (~) marks an approximate allele match.</p>
+    <h4>Why an ST may be unassigned</h4>
+    <p>First check for missing or fragmented genes, ambiguous bases and typing errors. If all seven loci are readable, the profile may already have an ST assigned after <b>31 December 2024</b>. Changes to PubMLST’s redistribution terms limit the PubMLST-derived data bundled by <a href="https://github.com/tseemann/mlst/releases/tag/v2.33.0" target="_blank" rel="noopener">Torsten Seemann’s <i>mlst</i> project</a> to records available by that date. Another possibility is a new allele or combination. Check the current scheme before reporting a new ST. See the <a href="#/references">scheme references</a>.</p>
   </div>
   <div class="band">
-    <h3>Sequence quality and reference consistency</h3>
-    <p>Chromosomal targets are detected at 75% nucleotide identity or higher. A warning appears below 92% identity or below 90% reference coverage. A detected <i>gyrA</i>, <i>parC</i> or <i>recN</i> match below 90% identity causes the result to be withheld with “Please verify the species selected and resubmit.” No ST, phenotype or checkpoints are reported.</p>
-    <p>For inputs of at least 1,000,000 bp, available MLST match results are also checked for missing loci or identities below 90%. MLST is primarily used for ST assignment; here, similarity to its housekeeping genes provides a <b>supporting check of consistency with the selected reference scheme</b>. This threshold is a software rule, not a universal species boundary, and it does not identify an alternative species.</p>
-    <p>When the chromosomal matches already reject a whole-genome input, a quick MLST search adds representative-allele identities to the warning. Each percentage comes from the best-scoring match among up to four selected alleles for that locus; it need not be the closest match across every allele. The full allele search is skipped on this path.</p>
-    <p>A completely missing chromosomal gene is handled differently from a detected low-identity gene. It can make Checkpoint 1 inconclusive and allow a limited call from RecN and qnr information. If RecN-346 cannot be read and neither qnr marker is present, no phenotype is given. A failed genome-length MLST consistency check still withholds the result. An MLST processing error alone does not automatically prevent an otherwise usable ciprotype prediction.</p>
-    <p>The qnr screen requires at least 80% identity and 90% reference coverage. In a partial or gene-only upload, “not detected” does not prove absence from the organism. Target codons must be readable without gaps, ambiguous bases or stop codons.</p>
+    <h3>How to read a sequence warning</h3>
+    <p><b>Chromosomal genes.</b> A match to <i>gyrA</i>, <i>parC</i> or <i>recN</i> counts as detected from 75% nucleotide identity. If a detected gene matches the selected species reference at less than 90% identity (the default cutoff), CiproTyper displays “Please verify the species selected and resubmit” and withholds the ST, phenotype and checkpoints. Coverage below 90% of the reference gene also raises a warning.</p>
+    <p><b>MLST matches.</b> For inputs of at least 1,000,000 bp, a missing locus or identity below 90% in the MLST results also triggers the mismatch warning. These matches support a check against the selected scheme. They cannot identify an alternative species or distinguish <i>E. coli</i> from <i>S. sonnei</i>. If a chromosomal match has already triggered rejection, each MLST percentage shown comes from the best-scoring representative allele for that gene. A typing error alone can leave the ST open while a phenotype is still reported.</p>
+    <p><b>Partial sequences.</b> A missing chromosomal gene can leave Checkpoint 1 inconclusive. If RecN-346 is unreadable and neither qnr marker is present, this partial route gives no phenotype. A target codon needs three consecutive, unambiguous bases that do not encode a stop. The qnr screen requires at least 80% identity and 90% reference coverage. In a gene-only file, a zero means the marker was absent from the submitted sequence or entered as absent.</p>
   </div>
   <div class="band">
-    <h3>Limits</h3>
-    <ul>
-      <li>Four species only: <i>E. coli</i>, <i>S. sonnei</i>, <i>S. enterica</i> subsp. I and <i>K. pneumoniae</i>. Choose the species yourself. A genome that does not match it gets no result. <i>E. coli</i> and <i>S. sonnei</i> cannot be told apart from these genes.</li>
-      <li>The founding dataset is limited. It holds 2,734 isolates from 28 countries, more than half from the USA, and from only three isolation sources (stool, urine and respiratory). More populations need to be studied before the rules can be trusted widely.</li>
-      <li>A qnr gene found in the sequence does not prove it is expressed. Some qnr-positive isolates in the data are susceptible.</li>
-      <li>The accuracy figures are measured on the 2,734 founding isolates that also define the rules, so they are not independent validation.</li>
-      <li>Assembled sequence only. Raw sequencing reads are not supported yet. Contig breaks and ambiguous target codons can prevent a complete ciprotype or ST.</li>
-      <li>The qnr screen uses qnrB2 and qnrS1 references; it does not cover every qnr family or every resistance mechanism. Predictions do not replace laboratory susceptibility testing or provide an MIC.</li>
-      <li>ST assignment is limited by the bundled allele and profile data. Newer PubMLST entries or genuinely new profiles may be absent, as explained above. No ST assigned is not proof of a new ST.</li>
-    </ul>
+    <h3>Limits of interpretation</h3>
+    <p>The tool accepts assembled sequences from the four species listed above. The founding collection contains 2,734 isolates from stool, urine and respiratory samples across 28 countries, with more than half from the USA. Accuracy on this collection measures agreement with the isolates used to build the rules. The founding table lacks RecN codons, so codon-specific calls could not be assessed there.</p>
+    <p>The screen covers two qnr markers. Gene detection does not measure expression, and some qnr-positive isolates tested susceptible. Confirm the predicted phenotype by laboratory susceptibility testing when a measured result or MIC is needed.</p>
   </div>
 </section>
 
@@ -311,38 +291,24 @@
 <!-- DOCUMENTATION -->
 <section id="p-documentation" class="page">
   <div class="page-head"><h2>Documentation</h2>
-    <p>New to CiproTyper? Start with the user guide to explore the reference collection, analyse a sample and understand its result. The technical guide explains how the software works and how to run it yourself.</p>
+    <p>Use <a href="#/browse">Browse</a> to find reference isolates and <a href="#/analyze">Analyze</a> to compare them by source or country.</p>
   </div>
   <div class="band">
-    <h3>Start here</h3>
-    <ol>
-      <li>Open <a href="#/predict">Predict</a>, choose your species and isolation source, then upload an assembled FASTA file, paste a sequence, enter BV-BRC genome IDs or use the residue form.</li>
-      <li>Read the phenotype together with the ciprotype, reference support and any warnings. Open the MLST and checkpoint details to understand what was found.</li>
-      <li>Save an individual report as CSV or JSON, or use the print option to save a PDF. Use <a href="#/browse">Browse</a> and <a href="#/analyze">Analyze</a> to explore the reference collection.</li>
-    </ol>
-    <p>For the biological background and prediction rules, visit <a href="#/theory">Theory</a>. For requests from scripts, open the <a href="#/data">API and data</a> page or the <a href="/docs" target="_blank" rel="noopener">interactive API guide</a>.</p>
+    <h3>Run your first prediction</h3>
+    <p>Open <a href="#/predict">Predict</a>, select the species and isolation source, then upload an assembly, paste a sequence, enter a BV-BRC ID or supply known residues. Read the phenotype alongside its reference support and warnings. Save an individual report as CSV, JSON or PDF.</p>
+    <p>Visit <a href="#/theory">Theory</a> for the checkpoint rules, sequence warnings and the PubMLST cutoff that can leave an ST unassigned.</p>
   </div>
   <div class="band">
-    <h3>User guide and tutorial</h3>
-    <p>A step-by-step guide to Browse, Analyze, Predict and Submit, with screenshots and descriptions of the examples shown. It explains input formats, single and batch analyses, result fields, warnings, downloads and submission tracking.</p>
-    <p class="muted">The downloadable PDF will be added here when the guide is finalised.</p>
-    <!-- Add the final user guide PDF link here when supplied. -->
+    <h3>Guides</h3>
+    <p><b>User guide and tutorial.</b> Follow screenshot examples for single and batch predictions, result interpretation and submission tracking.</p>
+    <!-- Final user guide PDF link -->
+    <p><b>Software architecture and installation.</b> See how the interface, API, analysis and database work together, and how to run CiproTyper locally or with Docker.</p>
+    <!-- Final architecture PDF link -->
+    <p class="muted">PDF downloads will be available when the guides are finalised.</p>
   </div>
   <div class="band">
-    <h3>Software architecture and installation</h3>
-    <p>A guide to the browser interface, API, sequence analysis, MLST, prediction rules and database. It also covers local and Docker installation, configuration, backups and troubleshooting.</p>
-    <p class="muted">The downloadable PDF will be added here when the guide is finalised.</p>
-    <!-- Add the final architecture and installation PDF link here when supplied. -->
-  </div>
-  <div class="band">
-    <h3>Documentation and source code on GitHub</h3>
-    <p>Visit the <a href="https://github.com/jisiasr-sclab/CiproTyper" target="_blank" rel="noopener">CiproTyper public repository</a> for the source code, documentation and licence information. Start with <code>README.md</code> for the biology and workflow; it links to <code>ARCHITECTURE.md</code> for software architecture and installation.</p>
-  </div>
-  <div class="band">
-    <h3>Before interpreting a result</h3>
-    <p>CiproTyper supports four species and uses assembled nucleotide sequences. A prediction does not replace laboratory susceptibility testing. A missing target, an incomplete assembly or a mismatch with the selected reference can limit or prevent a result.</p>
-    <p><b>No ST assigned does not necessarily mean a new ST.</b> PubMLST-derived data distributed through the upstream <i>mlst</i> repository are limited to records available up to 31 December 2024 because of changes to PubMLST's data-access and redistribution terms. A later ST may therefore be absent from the bundled data. A genuinely new allele or allele combination is another possibility, but missing or fragmented loci can also prevent typing. See <a href="#/theory">Theory</a> for the MLST explanation and limitations.</p>
-    <p>Questions about an input or result? Write to <a href="mailto:jisiasr.sclab@gmail.com">jisiasr.sclab@gmail.com</a>.</p>
+    <h3>Source code and help</h3>
+    <p>The <a href="https://github.com/jisiasr-sclab/CiproTyper" target="_blank" rel="noopener">public repository</a> contains the README, architecture guide and licence information. For scripts and exports, see <a href="#/data">API and data</a> or the <a href="/docs" target="_blank" rel="noopener">interactive API guide</a>. For help with a result, contact <a href="mailto:jisiasr.sclab@gmail.com">jisiasr.sclab@gmail.com</a>.</p>
   </div>
 </section>
 
