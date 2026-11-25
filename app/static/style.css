@@ -303,6 +303,7 @@ ol.refs li{margin:0 0 10px;overflow-wrap:anywhere}
 
 /* Checkpoint 1 table in the layout of the authors' table: residues in order (observed ones in bold), property text under them.
    The residue found in the sample is boxed and blinks, and the property it has is highlighted */
+#cp1-static .cp1 th:not(:first-child){text-align:center}
 table.rtab.cp1 td{text-align:center;vertical-align:middle}
 table.rtab.cp1 td.nw{text-align:left}
 .rline{margin:1px 0;font:.92rem var(--mono);white-space:nowrap}
