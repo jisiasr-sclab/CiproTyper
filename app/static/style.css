@@ -81,6 +81,9 @@ body .btn.solid{color:#fff}
 /* forms */
 label{display:block;font-size:.85rem;color:var(--muted);margin:0 0 4px}
 select,input[type=text],input[type=search],input[type=number],input[type=email],input[type=password],textarea{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font:inherit}
+select.species-select,select.species-select option{font-style:italic}
+select.species-select:has(option[value=""]:checked),select.species-select option[value=""]{font-style:normal}
+
 textarea{min-height:130px;font-family:var(--mono);font-size:.85rem;resize:vertical}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
 .row3{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:12px}

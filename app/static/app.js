@@ -3,6 +3,10 @@
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+// Format scientific names in display text while preserving strain labels and escaped server content.
+const speciesText = value => esc(value)
+  .replace(/\b(?:(?:Escherichia|E\.)\s*coli|(?:Shigella|S\.)\s*sonnei|(?:Salmonella|S\.)\s*enterica|(?:Klebsiella|K\.)\s*pneumoniae)\b/g, "<i>$&</i>")
+  .replace(/(<\/i>\s+(?:subsp\.|subspecies)\s+)(enterica|pneumoniae)\b/g, "$1<i>$2</i>");
 const fmt = n => Number(n).toLocaleString("en-US");
 let META = null;
 const SP = {};                       // key -> display name
@@ -103,7 +107,7 @@ INIT.home = async () => {
     habitatOrder.indexOf(a.habitat) - habitatOrder.indexOf(b.habitat));
   $("#home-stats").innerHTML = `<caption class="sr">Reference performance by species and isolation source</caption>
     <thead><tr><th scope="col">Species</th><th scope="col">Source</th><th scope="col">No. of isolates</th><th scope="col">No. of resistant isolates</th><th scope="col">No. of ciprotypes</th><th scope="col">Prediction accuracy</th></tr></thead><tbody>` +
-    rows.map(s => `<tr><td><i>${esc(SP[s.species])}</i></td><td>${esc(labels[s.habitat] || SITE[s.habitat])}</td><td class="stat">${fmt(s.n_isolates)}</td><td class="stat">${fmt(s.n_resistant)}</td><td class="stat">${fmt(s.n_septatypes)}</td><td class="stat">${s.accuracy}%</td></tr>`).join("") + "</tbody>";
+    rows.map(s => `<tr><td>${speciesText(SP[s.species])}</td><td>${esc(labels[s.habitat] || SITE[s.habitat])}</td><td class="stat">${fmt(s.n_isolates)}</td><td class="stat">${fmt(s.n_resistant)}</td><td class="stat">${fmt(s.n_septatypes)}</td><td class="stat">${s.accuracy}%</td></tr>`).join("") + "</tbody>";
 };
 
 /* ----------------------------------------------------------------- predict */
@@ -141,9 +145,9 @@ async function maybeGzip(f) {      // smaller upload on a phone connection; the 
 const TIER = { database: "Database", database_other_site: "Database (other source)", grammar: "Grammar (new)" , checkpoints_2_3: "Checkpoints 2 and 3 only" };
 function drawBatch(done, total, unit = "file") {
   const rows = BATCH.map((x, i) => {
-    if (x.error) return `<tr><td>${esc(x.name)}</td><td colspan="5" class="muted">${esc(x.error)}</td></tr>`;
+    if (x.error) return `<tr><td>${esc(x.name)}</td><td colspan="5" class="muted">${speciesText(x.error)}</td></tr>`;
     const p = x.res.prediction;
-    const bv = x.res.bvbrc, sub = bv ? `<span class="alias"><i>${esc(SHORT[x.res.species] || "")}</i> ${esc(bv.genome_name)}${bv.in_reference ? " (reference isolate)" : ""}</span>` : "";
+    const bv = x.res.bvbrc, sub = bv ? `<span class="alias">${speciesText(SHORT[x.res.species] || "")} ${speciesText(bv.genome_name)}${bv.in_reference ? " (reference isolate)" : ""}</span>` : "";
     return `<tr class="clk" data-act="detail" data-i="${i}"><td>${esc(x.name)}${sub}</td><td class="mono nw">${p && x.res.septatype ? mutSep(x.res.septatype) : "-"}</td><td class="nw">${esc(((x.res.analysis || {}).mlst || {}).st || "-")}</td><td>${p ? badge(p.call, 1) : (x.res && x.res.status === "species_mismatch" ? "No result" : "No call")}${x.res.species_check && x.res.species_check.message ? `<span class="alias" style="color:var(--res)" title="${esc(x.res.species_check.message)}">verify species</span>` : ""}</td><td>${p ? esc(TIER[p.tier] || p.tier) : "-"}</td><td class="stat">${p && p.known ? p.n_resistant + " of " + p.n_isolates + " resistant" : "-"}</td></tr>`;
   }).join("");
   const working = done < total;
@@ -274,17 +278,20 @@ function whyBlock(p) {
   const k = c.checkpoints, r1 = k.residues, dec = c.decided_by, hy = c.hydrophobicity, res = (c.positions || []).map(x => x.residue).join("");
   if (r1.applied === false && !(c.positions || []).length) return whyNotApplied(p, c);      // a gene matches the species too poorly: no table to show
   const mixed = r1.applied === false;                                                          // the four residues are not all in one column
-  const intro = "";
+  const disagreement = p.known && p.grammar_agrees === false;
+  const heading = p.known ? `Three-checkpoint result: ${esc(c.grammar_call)}` : `Why ${esc(p.call)}`;
+  const referenceNote = disagreement
+    ? `<p class="muted small">This ciprotype is in the reference database, so the majority rule determines the reported phenotype (${esc(p.call)}).</p>`
+    : "";
   const tag = on => on ? `<span class="tag">decides</span>` : "";
   const dim = x => x === "Resistant" ? "hit" : "dim";
-  const why1 = mixed ? "All four residues need to be in one column of the table, because the effect of a residue depends on the others (context dependence). They are not, so checkpoint 1 is <b>inconclusive</b>. The call comes from checkpoints 2 and 3 only."
+  const why1 = mixed ? "All four residues need to be in one column of the table, because the effect of a residue depends on the others (context dependence). They are not, so checkpoint 1 is <b>inconclusive</b>. The combined checkpoint result comes from checkpoints 2 and 3."
     : `All four residues are in the ${r1.pattern === "resistant" ? "Resistant" : "Susceptible"} column${(r1.exceptions || []).length ? ", counting the S-K pair at ParC-80 and ParC-84 as an exception that is Resistant" : ""}.`;
   const hBlock = hy ? `<div class="crit dim"><h4>QRDR helix mean hydrophobicity &lt;H&gt;</h4>
     ${hChart(hy.mean, null, hy.cutoff)}
     ${helixLines("Sample", hy)}
     <p class="small"><a class="calc-link" href="#/calc?r=${esc(res)}">How is this calculated?</a> &nbsp; <a class="calc-link" href="#/calc?r=${esc(res)}&s=cutoff">Why a cutoff of ${f3(hy.cutoff)}?</a></p></div>` : "";
-  if ((p.tier === "database" || p.tier === "database_other_site") && p.grammar_agrees === false) return hBlock;
-  let h = `<h3>Why ${esc(p.call)}</h3><p class="muted small">${intro}Highlighted is what applies to this sample.</p>`;
+  let h = `<h3>${heading}</h3>${referenceNote}<p class="muted small">Highlighted is what applies to this sample.</p>`;
   h += `<div class="crit ${mixed ? "dim" : dim(r1.call)}"><h4>Checkpoint 1: residues at GyrA-83, GyrA-87, ParC-80 and ParC-84 ${mixed ? `<span class="tag off">inconclusive</span>` : badge(r1.call, 1)} ${tag(["pattern"].includes(dec))}</h4>${critTable(c.positions)}
     <p style="margin:8px 0 0">${why1}${mixed ? "" : ` <b>Checkpoint 1 says ${esc(r1.call)}.</b>`}</p></div>`;
   h += hBlock;
@@ -299,9 +306,9 @@ function whyBlock(p) {
 function renderResult(r, extra) {
   const p = r.prediction, a = r.analysis;
   LAST = r;
-  let h = `<div class="band result"><p class="print-only">Ciprotyper report, ${new Date().toLocaleDateString()}. ${esc(r.species_name)}, ${esc(SITE[r.habitat] || r.habitat)}. ${esc(r._name || "")}</p>`;
-  if (r.bvbrc) h += `<p class="small muted" style="margin:0 0 8px">BV-BRC genome <a href="${esc(r.bvbrc.url)}" target="_blank" rel="noopener">${esc(r.bvbrc.genome_id)}</a>: ${esc(r.bvbrc.genome_name)}${r.bvbrc.country ? ", " + esc(r.bvbrc.country) : ""}${r.bvbrc.year ? ", " + esc(r.bvbrc.year) : ""}${r.bvbrc.isolation_source ? ". Source: " + esc(r.bvbrc.isolation_source) : ""}.</p>`;
-  if (r.species_check && r.species_check.message) h += `<div class="species-warn" role="alert"><b>Please verify the species selected and resubmit.</b> ${esc(r.species_check.message.replace(/^Please verify the species selected and resubmit\.\s*/, ""))}</div>`;
+  let h = `<div class="band result"><p class="print-only">Ciprotyper report, ${new Date().toLocaleDateString()}. ${speciesText(r.species_name)}, ${esc(SITE[r.habitat] || r.habitat)}. ${speciesText(r._name || "")}</p>`;
+  if (r.bvbrc) h += `<p class="small muted" style="margin:0 0 8px">BV-BRC genome <a href="${esc(r.bvbrc.url)}" target="_blank" rel="noopener">${esc(r.bvbrc.genome_id)}</a>: ${speciesText(r.bvbrc.genome_name)}${r.bvbrc.country ? ", " + esc(r.bvbrc.country) : ""}${r.bvbrc.year ? ", " + esc(r.bvbrc.year) : ""}${r.bvbrc.isolation_source ? ". Source: " + esc(r.bvbrc.isolation_source) : ""}.</p>`;
+  if (r.species_check && r.species_check.message) h += `<div class="species-warn" role="alert"><b>Please verify the species selected and resubmit.</b> ${speciesText(r.species_check.message.replace(/^Please verify the species selected and resubmit\.\s*/, ""))}</div>`;
   if (r.status === "species_mismatch") {
     h += `<h3>No result</h3><p>The genome does not match the selected species, so no sequence type, phenotype or checkpoints are reported. Please check the species and resubmit.</p>`;
   } else if (!p) {
@@ -310,9 +317,8 @@ function renderResult(r, extra) {
     const sitesTxt = (p.reference_sites || []).map(x => `${SITE_LC[x.habitat] || String(x.habitat).toLowerCase()} ${x.n}`).join(", ");
     const cs = p.reference_countries || [], top = cs.slice(0, 3).map(x => `${esc(x.country)} ${x.n}`).join(", ");
     const countryTxt = !cs.length ? "" : cs.length === 1 ? `, all from ${esc(cs[0].country)}` : `, from ${top}${cs.length > 3 ? ` and ${cs.length - 3} other ${cs.length - 3 === 1 ? "country" : "countries"}` : ""}`;
-    const byMajority = p.grammar_agrees === false ? ` Based on the majority rule, it is <b>${esc(p.call.toLowerCase())}</b>.` : "";     // said only when the checkpoints point the other way
-    const basis = p.tier === "database" ? `This ciprotype is in <b>${fmt(p.n_isolates)}</b> reference isolates (${esc(sitesTxt)})${countryTxt}.${byMajority}`
-      : p.tier === "database_other_site" ? `Not seen for this isolation source. It is in <b>${fmt(p.n_isolates)}</b> reference isolates from other sources (${esc(sitesTxt)})${countryTxt}.${byMajority}`
+    const basis = p.tier === "database" ? `This ciprotype is in <b>${fmt(p.n_isolates)}</b> reference isolates (${esc(sitesTxt)})${countryTxt}.`
+      : p.tier === "database_other_site" ? `Not seen for this isolation source. It is in <b>${fmt(p.n_isolates)}</b> reference isolates from other sources (${esc(sitesTxt)})${countryTxt}.`
       : p.tier === "checkpoints_2_3" ? `Checkpoint 1 is inconclusive (see the notes below), so the call comes from checkpoints 2 and 3 only.`
       : `New ciprotype, so the call comes from the grammar.`;
     h += `<div class="verdict-row">${badge(p.call)}</div><p class="basis">${basis}</p>`;
@@ -325,8 +331,8 @@ function renderResult(r, extra) {
       h += `<div class="info">RecN-346 uses the ctg codon for leucine, a high-usage synonymous change flagged in <i>S. enterica</i>.</div>`;
     const ml = a && a.mlst;
     if (ml) {
-      h += `<p class="stline"><span class="muted">Sequence type</span> ${ml.st ? `<b class="mono">${esc(ml.st)}</b>` : `<span class="muted">${esc(ml.note || "not typed")}</span>`}</p>`;
-      if (ml.alleles) h += `<details><summary>MLST alleles (${esc(ml.scheme_name || "")})</summary><div class="scroll"><table><tr>${Object.keys(ml.alleles).map(k => `<th>${esc(k)}</th>`).join("")}</tr><tr>${Object.values(ml.alleles).map(v => `<td class="mono">${esc(v)}</td>`).join("")}</tr></table></div></details>`;
+      h += `<p class="stline"><span class="muted">Sequence type</span> ${ml.st ? `<b class="mono">${esc(ml.st)}</b>` : `<span class="muted">${speciesText(ml.note || "not typed")}</span>`}</p>`;
+      if (ml.alleles) h += `<details><summary>MLST alleles (${speciesText(ml.scheme_name || "")})</summary><div class="scroll"><table><tr>${Object.keys(ml.alleles).map(k => `<th>${esc(k)}</th>`).join("")}</tr><tr>${Object.values(ml.alleles).map(v => `<td class="mono">${esc(v)}</td>`).join("")}</tr></table></div></details>`;
     }
     if (p.known) {
       h += `<p class="stat">${fmt(p.n_resistant)} resistant, ${fmt(p.n_susceptible)} susceptible.</p>${bar(p.n_resistant, p.n_susceptible)}`;
@@ -340,24 +346,22 @@ function renderResult(r, extra) {
       h += `<p class="muted" style="margin-top:12px">Known ciprotypes with the same GyrA/ParC residues:</p><div class="scroll"><table><tr><th>Ciprotype</th><th>Isolates</th><th>Resistant</th><th>Susceptible</th></tr>${p.similar.map(x => `<tr><td class="mono">${esc(x.septatype)}</td><td>${x.n_isolates}</td><td>${x.n_resistant}</td><td>${x.n_susceptible}</td></tr>`).join("")}</table></div>`;
     }
     h += whyBlock(p);
-    if (p.mechanism && p.mechanism.length) h += `<details><summary>Structural reading (schematic)</summary><ul class="why">${p.mechanism.map(m => `<li><span class="dot ${esc(m.effect)}"></span><span><b>${esc(m.position)} ${esc(m.residue)}</b>. ${esc(m.text)}</span></li>`).join("")}</ul></details>`;
+    if (p.mechanism && p.mechanism.length) h += `<details><summary>Structural reading (schematic)</summary><ul class="why">${p.mechanism.map(m => `<li><span class="dot ${esc(m.effect)}"></span><span><b>${esc(m.position)} ${esc(m.residue)}</b>. ${speciesText(m.text)}</span></li>`).join("")}</ul></details>`;
   }
   const notes = (r.warnings || []).filter(w => !w.startsWith("Please verify the species selected"));       // that one has its own banner
-  if (notes.length) h += `<div class="note"><ul>${notes.map(w => `<li>${esc(w)}</li>`).join("")}</ul></div>`;
+  if (notes.length) h += `<div class="note"><ul>${notes.map(w => `<li>${speciesText(w)}</li>`).join("")}</ul></div>`;
   if (a && a.positions) {
     const ref = a.reference || { genes: {}, qnr: {} };
     h += `<details><summary>Sequence details</summary>
-      <p class="muted small">Your sequence is compared with the ${esc(ref.species || "")} reference genes (${Object.entries(ref.genes || {}).map(([g, ac]) => `${esc(g)} ${esc(ac)}`).join(", ")}).</p>
+      <p class="muted small">Your sequence is compared with the ${speciesText(ref.species || "")} reference genes (${Object.entries(ref.genes || {}).map(([g, ac]) => `${esc(g)} ${esc(ac)}`).join(", ")}).</p>
       ${a.genes ? `<div class="scroll"><table><tr><th>Gene</th><th>Match to the reference</th><th>Coverage</th></tr>${Object.entries(a.genes).map(([g, x]) => { const id = x.found ? x.identity : x.best_identity, low = a.checkpoint1 && a.checkpoint1.low.some(l => l.gene === g); return `<tr><td>${PROT[g] || esc(g)}</td><td class="${low ? "bad" : ""}">${id != null ? id + "%" : "not found"}${x.found ? "" : " (not found)"}${low ? ` (below ${a.checkpoint1.threshold}%)` : ""}</td><td>${x.found ? x.coverage + "%" : "-"}</td></tr>`; }).join("")}</table></div>` : ""}
       <div class="scroll" style="margin-top:10px"><table><tr><th>Position</th><th>Sample codon</th><th>Sample residue</th><th>Reference codon</th><th>Reference residue</th></tr>` +
       Object.values(a.positions).map(x => `<tr><td class="nw">${PROT[x.gene] || esc(x.gene)}-${x.pos}</td><td class="mono">${esc((x.codon || "-").toLowerCase())}</td><td class="mono">${esc(x.aa || "-")}</td><td class="mono">${esc((x.ref_codon || "-").toLowerCase())}</td><td class="mono">${esc(x.ref_aa || "-")}</td></tr>`).join("") +
       `</table></div><div class="scroll" style="margin-top:10px"><table><tr><th>qnr gene</th><th>Result</th><th>Match to reference</th></tr>` +
-      Object.entries(a.qnr).map(([k, x]) => `<tr><td>${k === "qnrB2" ? "qnrB" : "qnrS"}</td><td>${x.present ? "Present" : "Absent"}${x.source === "set by user" ? " (set by you)" : ""}</td><td>${x.identity != null ? `${x.identity}% identity, ${x.coverage}% coverage to ${esc(x.reference)}` : "-"}</td></tr>`).join("") +
+      Object.entries(a.qnr).map(([k, x]) => `<tr><td>${k === "qnrB2" ? "qnrB" : "qnrS"}</td><td>${x.present ? "Present" : "Absent"}${x.source === "set by user" ? " (set by you)" : ""}</td><td>${x.identity != null ? `${x.identity}% identity, ${x.coverage}% coverage to ${speciesText(x.reference)}` : "-"}</td></tr>`).join("") +
       `</table></div><p class="muted small" style="margin-top:8px">${a.input.records} sequence record(s), ${fmt(a.input.total_bp)} bp.</p></details>`;
   }
-  if (p && p.novel) h += `<div class="info">${(p.other_species || []).length ? `This ciprotype is in the reference for ${p.other_species.map(o => `${esc(SHORT[o.species] || o.species)} (${o.n_isolates} isolate${o.n_isolates === 1 ? "" : "s"}, ${o.n_resistant} resistant)`).join(" and ")}, but a call uses the species you chose. ` : ""}If you have the laboratory phenotype, <a href="#/submit">submit the isolate</a> so curators can add it.</div>`;
-  if (p && p.known && p.grammar_agrees === false)      // a very small note, never a remark about the checkpoints
-    h += `<p class="muted" style="font-size:.72rem;margin:12px 0 0">Our training dataset showed that ${fmt(p.n_resistant)} of ${fmt(p.n_isolates)} isolates with this ciprotype were resistant and ${fmt(p.n_susceptible)} susceptible, so it is called ${esc(p.call.toLowerCase())}.</p>`;
+  if (p && p.novel) h += `<div class="info">${(p.other_species || []).length ? `This ciprotype is in the reference for ${p.other_species.map(o => `${speciesText(SHORT[o.species] || o.species)} (${o.n_isolates} isolate${o.n_isolates === 1 ? "" : "s"}, ${o.n_resistant} resistant)`).join(" and ")}, but a call uses the species you chose. ` : ""}If you have the laboratory phenotype, <a href="#/submit">submit the isolate</a> so curators can add it.</div>`;
   h += (extra || "") + `<div class="actions no-print"><button class="btn line" data-act="print" type="button">Print or save as PDF</button><button class="btn line" data-act="csv" type="button">Download CSV</button><button class="btn line" data-act="json" type="button">Download JSON</button></div></div>`;
   return h;
 }
@@ -423,13 +427,13 @@ INIT.predict = () => {
     btn.disabled = true; const old = btn.textContent; btn.textContent = "Analysing";
     if (PMODE === "bvbrc") {
       try { await runBvbrc($("#sp").value, $("#hb").value); if (innerWidth < 860) $("#presult").scrollIntoView({ behavior: "smooth" }); }
-      catch (ex) { $("#presult").innerHTML = ""; err.innerHTML = `<div class="err">${esc(ex.message)}</div>`; }
+      catch (ex) { $("#presult").innerHTML = ""; err.innerHTML = `<div class="err">${speciesText(ex.message)}</div>`; }
       finally { btn.disabled = false; btn.textContent = old; }
       return;
     }
     if (PMODE === "batch") {
       try { await runBatch($("#sp").value, $("#hb").value); if (innerWidth < 860) $("#presult").scrollIntoView({ behavior: "smooth" }); }
-      catch (ex) { $("#presult").innerHTML = ""; err.innerHTML = `<div class="err">${esc(ex.message)}</div>`; }
+      catch (ex) { $("#presult").innerHTML = ""; err.innerHTML = `<div class="err">${speciesText(ex.message)}</div>`; }
       finally { btn.disabled = false; btn.textContent = old; }
       return;
     }
@@ -451,7 +455,7 @@ INIT.predict = () => {
       res._name = PMODE === "manual" ? "manual entry" : PMODE === "paste" ? "pasted sequence" : (PFILE && PFILE.name) || "";
       $("#presult").innerHTML = renderResult(res);
       if (innerWidth < 860) $("#presult").scrollIntoView({ behavior: "smooth" });
-    } catch (ex) { $("#presult").innerHTML = ""; err.innerHTML = `<div class="err">${esc(ex.message)}</div>`; }
+    } catch (ex) { $("#presult").innerHTML = ""; err.innerHTML = `<div class="err">${speciesText(ex.message)}</div>`; }
     finally { btn.disabled = false; btn.textContent = old; }
   };
 };
@@ -481,8 +485,8 @@ async function loadBrowse() {
     $("#btable").innerHTML = `<thead><tr>${th("genome_id", "Genome ID", 1)}${th("species", "Species and source", 1)}${th("country", "Country", 1)}${th("septatype", "Ciprotype", 1)}${th("pred", "Ciprotyper predicted phenotype", 1)}<th class="grp" colspan="2">BV-BRC Phenotype Info</th>${th("submitter", "Submitter", 1)}${th("date", "Date", 1)}${th("affiliation", "Affiliation", 1)}<th rowspan="2">Publication</th></tr>
       <tr>${th("lab", "Lab")}${th("bv", "Computationally predicted")}</tr></thead><tbody>` +
       (d.rows.length ? d.rows.map(r => `<tr>
-        <td class="nw">${r.bvbrc_url ? `<a href="${esc(r.bvbrc_url)}" target="_blank" rel="noopener">${esc(r.genome_id)}</a>` : esc(r.genome_id)}<span class="alias">${esc(r.genome_name || r.isolate_name)}</span></td>
-        <td class="nw"><i>${esc(SHORT[r.species])}</i><span class="alias">${esc(SITE[r.habitat])}${r.source === "community" ? ", community" : ""}</span></td>
+        <td class="nw">${r.bvbrc_url ? `<a href="${esc(r.bvbrc_url)}" target="_blank" rel="noopener">${esc(r.genome_id)}</a>` : esc(r.genome_id)}<span class="alias">${speciesText(r.genome_name || r.isolate_name)}</span></td>
+        <td class="nw">${speciesText(SHORT[r.species])}<span class="alias">${esc(SITE[r.habitat])}${r.source === "community" ? ", community" : ""}</span></td>
         <td class="nw">${esc(r.country || "-")}</td>
         <td class="mono nw">${mutSep(r.septatype)}</td>
         <td class="nw">${r.septatyper_call ? badge(r.septatyper_call, 1) : "-"} ${r.star ? `<span class="star" title="Ciprotyper matches the laboratory phenotype. The BV-BRC computational prediction does not.">&#9733;</span>` : ""}</td>
@@ -498,7 +502,7 @@ async function loadBrowse() {
     wrap.scrollTop = 0;
     if (BS.jump) { BS.jump = false; wrap.scrollIntoView({ block: "start" }); }       // after a page or size change, bring the table back into view
     $$("#btable th.sort").forEach(h => h.onclick = () => { BS.desc = BS.sort === h.dataset.k ? !BS.desc : false; BS.sort = h.dataset.k; BS.page = 1; loadBrowse(); });
-  } catch (e) { $("#btable").innerHTML = `<tr><td class="err">${esc(e.message)}</td></tr>`; }
+  } catch (e) { $("#btable").innerHTML = `<tr><td class="err">${speciesText(e.message)}</td></tr>`; }
 }
 async function bvNote() {
   let st; try { st = await api("/api/v1/bvbrc-status"); } catch (e) { st = { loaded: false }; }
@@ -507,7 +511,7 @@ async function bvNote() {
   if (st.loaded) { n.innerHTML = ""; return; }
   if (st.running) { n.innerHTML = `<div class="info">Fetching BV-BRC predictions: ${st.done} of ${st.total} genomes. This table updates when it finishes.</div>`; setTimeout(async () => { await bvNote(); if (META.bvLoaded) loadBrowse(); }, 6000); }
   else if (st.error) {
-    n.innerHTML = `<div class="info">The BV-BRC comparison is not available right now (${esc(st.error)}). ${st.retrying ? `It keeps retrying in the background (${st.done} of ${st.total} genomes fetched so far).` : "It retries when the server restarts."}</div>`;
+    n.innerHTML = `<div class="info">The BV-BRC comparison is not available right now (${speciesText(st.error)}). ${st.retrying ? `It keeps retrying in the background (${st.done} of ${st.total} genomes fetched so far).` : "It retries when the server restarts."}</div>`;
     if (st.retrying) setTimeout(async () => { await bvNote(); if (META.bvLoaded) loadBrowse(); }, 20000);
   }
   else n.innerHTML = `<div class="info">The BV-BRC comparison is being prepared and will appear here soon.</div>`;
@@ -615,8 +619,8 @@ INIT.submit = () => {
   $("#s-look").onclick = async () => {
     const id = $("#s-gid").value.trim(); if (!id) return;
     $("#s-name").textContent = "Looking up";
-    try { const r = await api("/api/v1/bvbrc/" + encodeURIComponent(id)); $("#s-name").textContent = r.found ? "BV-BRC name: " + r.genome_name : r.reason; $("#s-name").dataset.name = r.found ? r.genome_name : ""; }
-    catch (e) { $("#s-name").textContent = e.message; }
+    try { const r = await api("/api/v1/bvbrc/" + encodeURIComponent(id)); $("#s-name").innerHTML = speciesText(r.found ? "BV-BRC name: " + r.genome_name : r.reason); $("#s-name").dataset.name = r.found ? r.genome_name : ""; }
+    catch (e) { $("#s-name").innerHTML = speciesText(e.message); }
   };
   const STATUS = { in_review: ["In review", ""], approved: ["Approved", "The isolate is in the repository."], rejected: ["Not added", "The isolate was not added to the repository."] };
   const track = async id => {
@@ -626,8 +630,8 @@ INIT.submit = () => {
     try {
       const t = await api("/api/v1/submissions/" + encodeURIComponent(id)), [label, text] = STATUS[t.status] || [t.status, ""];
       out.innerHTML = `<div class="info"><b>Status: ${esc(label)}</b>${text ? `<br>${esc(text)}` : ""}<br><span class="muted small">ID ${esc(t.job_id)} &middot; submitted ${esc(t.created)}${t.decided ? ` &middot; decided ${esc(t.decided)}` : ""}</span>
-        <br>${esc(SHORT[t.species] || t.species)}, ${esc(SITE[t.habitat] || t.habitat)}${t.septatype ? `, ciprotype <span class="mono">${esc(t.septatype)}</span>` : ""}${t.call ? `, Ciprotyper call ${badge(t.call, 1)}` : ""}${t.lab_phenotype ? `, laboratory result ${esc(t.lab_phenotype)}` : ""}</div>`;
-    } catch (e) { out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+        <br>${speciesText(SHORT[t.species] || t.species)}, ${esc(SITE[t.habitat] || t.habitat)}${t.septatype ? `, ciprotype <span class="mono">${esc(t.septatype)}</span>` : ""}${t.call ? `, Ciprotyper call ${badge(t.call, 1)}` : ""}${t.lab_phenotype ? `, laboratory result ${esc(t.lab_phenotype)}` : ""}</div>`;
+    } catch (e) { out.innerHTML = `<div class="err">${speciesText(e.message)}</div>`; }
   };
   $("#t-go").onclick = () => track($("#t-id").value);
   $("#t-id").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); track($("#t-id").value); } };
@@ -649,7 +653,7 @@ INIT.submit = () => {
         <br><span class="muted">Keep this ID. Enter it under Track your submission to check the status.</span></div>` + renderResult(r.result, "");
       $("#t-id").value = r.job_id;
       $("#sf").reset(); setDate(); $("#s-name").textContent = ""; $("#s-name").dataset.name = ""; upd();
-    } catch (ex) { err.innerHTML = `<div class="err">${esc(ex.message)}</div>`; }
+    } catch (ex) { err.innerHTML = `<div class="err">${speciesText(ex.message)}</div>`; }
     finally { btn.disabled = false; btn.textContent = old; }
   };
 };
@@ -683,9 +687,9 @@ async function showTetra(t) {
     const p = r.prediction;
     drawPocket(p.mechanism);
     $("#t-kv").innerHTML = `<dt>Residues</dt><dd class="mono">${aas.join("-")}</dd><dt>Grammar call</dt><dd>${badge(p.grammar.call, 1)} ${esc(p.grammar.rule)}</dd><dt>QRDR helix mean hydrophobicity &lt;H&gt;</dt><dd class="stat">${p.mean_h}</dd>`;
-    $("#t-why").innerHTML = p.mechanism.map(m => `<li><span class="dot ${esc(m.effect)}"></span><span><b>${esc(m.position)} ${esc(m.residue)}</b>. ${esc(m.text)}</span></li>`).join("");
+    $("#t-why").innerHTML = p.mechanism.map(m => `<li><span class="dot ${esc(m.effect)}"></span><span><b>${esc(m.position)} ${esc(m.residue)}</b>. ${speciesText(m.text)}</span></li>`).join("");
     $$("#t-pick button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
-  } catch (e) { $("#t-why").innerHTML = `<li class="err">${esc(e.message)}</li>`; }
+  } catch (e) { $("#t-why").innerHTML = `<li class="err">${speciesText(e.message)}</li>`; }
 }
 INIT.theory = async () => {
   const st = $("#cp1-static"); if (st) st.innerHTML = cp1Static();
@@ -704,11 +708,11 @@ INIT.theory = async () => {
     const [s, aa] = await Promise.all([api("/api/v1/stats/accuracy"), api("/api/v1/aminoacids")]);
     const b = s.benchmark;
     let h = "";
-    if (b.loaded) h += `<h3>Agreement of CiproTyper and BV-BRC predictions with laboratory results</h3><p class="stat">Among the reference isolates, ${fmt(b.compared)} have a BV-BRC computational prediction. Ciprotyper matches the lab result in ${fmt(b.septatyper_ok)} (${(100 * b.septatyper_ok / b.compared).toFixed(1)}%) and BV-BRC in ${fmt(b.bvbrc_ok)} (${(100 * b.bvbrc_ok / b.compared).toFixed(1)}%). Ciprotyper matches the laboratory phenotype where BV-BRC does not in ${fmt(b.wins)} isolates. The reverse happens in ${fmt(b.losses)}.</p><div class="scroll"><table><tr><th>Genome</th><th>Ciprotype</th><th>Lab</th><th>BV-BRC</th><th>Ciprotyper</th></tr>${b.examples.map(x => `<tr><td>${esc(x.genome_id)}<span class="alias">${esc(x.isolate_name)}</span></td><td class="mono">${esc(x.septatype)}</td><td>${badge(x.lab_phenotype, 1)}</td><td>${badge(x.bvbrc_call, 1)}</td><td>${badge(x.septatyper_call, 1)}</td></tr>`).join("")}</table></div>`;
+    if (b.loaded) h += `<h3>Agreement of CiproTyper and BV-BRC predictions with laboratory results</h3><p class="stat">Among the reference isolates, ${fmt(b.compared)} have a BV-BRC computational prediction. Ciprotyper matches the lab result in ${fmt(b.septatyper_ok)} (${(100 * b.septatyper_ok / b.compared).toFixed(1)}%) and BV-BRC in ${fmt(b.bvbrc_ok)} (${(100 * b.bvbrc_ok / b.compared).toFixed(1)}%). Ciprotyper matches the laboratory phenotype where BV-BRC does not in ${fmt(b.wins)} isolates. The reverse happens in ${fmt(b.losses)}.</p><div class="scroll"><table><tr><th>Genome</th><th>Ciprotype</th><th>Lab</th><th>BV-BRC</th><th>Ciprotyper</th></tr>${b.examples.map(x => `<tr><td>${esc(x.genome_id)}<span class="alias">${speciesText(x.isolate_name)}</span></td><td class="mono">${esc(x.septatype)}</td><td>${badge(x.lab_phenotype, 1)}</td><td>${badge(x.bvbrc_call, 1)}</td><td>${badge(x.septatyper_call, 1)}</td></tr>`).join("")}</table></div>`;
     $("#t-valid").innerHTML = h;
     $("#t-valid-band").hidden = !b.loaded;
     $("#t-aa").innerHTML = `<tr><th>Residue</th><th>Name</th><th>Hydrophobicity</th><th>Class</th></tr>` + aa.rows.sort((a, b) => b.hydrophobicity - a.hydrophobicity).map(x => `<tr><td class="mono">${x.aa}</td><td>${esc(x.name)}</td><td class="stat">${x.hydrophobicity.toFixed(2)}</td><td>${esc(x.class)}</td></tr>`).join("");
-  } catch (e) { $("#t-valid").innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+  } catch (e) { $("#t-valid").innerHTML = `<div class="err">${speciesText(e.message)}</div>`; }
 };
 
 /* ------------------------------------------------------------------- calculation */
@@ -718,7 +722,7 @@ INIT.calc = async () => {
   const start = clean(qs.get("r")) || "LNIE";
   let aa, cs;
   try { [aa, cs] = await Promise.all([api("/api/v1/aminoacids"), api("/api/v1/stats/cutoff")]); }
-  catch (e) { $("#calc-body").innerHTML = `<div class="band"><div class="err">${esc(e.message)}</div></div>`; return; }
+  catch (e) { $("#calc-body").innerHTML = `<div class="band"><div class="err">${speciesText(e.message)}</div></div>`; return; }
   const rows = aa.rows.slice().sort((a, b) => a.hydrophobicity - b.hydrophobicity);
   const wt = cs.wild_type, rs = cs.resistant_reference, cut = cs.cutoff;
   $("#calc-body").innerHTML = `
@@ -751,7 +755,7 @@ INIT.calc = async () => {
       el.innerHTML = `<div class="row2">${side("Sample", hy)}</div>${hChart(hy.mean, null, hy.cutoff, { res: cs.mean_resistant, sus: cs.mean_susceptible })}
         <p>Sample &lt;H&gt; is ${hy.side === "above" ? "above" : "at or below"} the cutoff of ${f3(hy.cutoff)}. This is shown for information only: &lt;H&gt; does not decide checkpoint 1.</p>
         <p><b>${c.checkpoints.residues.call ? `Checkpoint 1 says ${esc(c.checkpoints.residues.call)}.` : "Checkpoint 1 is inconclusive."}</b> ${c.checkpoints.residues.pattern ? `All four residues are in the ${c.checkpoints.residues.pattern === "resistant" ? "Resistant" : "Susceptible"} column.` : c.checkpoints.residues.call ? esc(c.checkpoints.residues.rule) + "." : "The four residues are not all in one column, so the phenotype comes from checkpoints 2 and 3."}</p>${critTable(c.positions)}`;
-    } catch (e) { el.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+    } catch (e) { el.innerHTML = `<div class="err">${speciesText(e.message)}</div>`; }
   };
   $("#calc-in").oninput = () => { const el = $("#calc-in"); el.value = capsOnly(el.value).slice(0, 4); draw(); };
   await draw();
@@ -761,7 +765,7 @@ INIT.calc = async () => {
 /* -------------------------------------------------------------- data, about */
 INIT.data = () => {
   const o = location.origin;
-  $("#ex-curl").textContent = `# Resistant E. coli urine isolates, first page\ncurl "${o}/api/v1/isolates?species=ecoli&habitat=URINE&phenotype=Resistant"\n\n# Predict from a genome file\ncurl -F file=@genome.fasta -F species=kpneumoniae -F habitat=URINE ${o}/api/v1/predict`;
+  $("#ex-curl").innerHTML = speciesText(`# Resistant E. coli urine isolates, first page\ncurl "${o}/api/v1/isolates?species=ecoli&habitat=URINE&phenotype=Resistant"\n\n# Predict from a genome file\ncurl -F file=@genome.fasta -F species=kpneumoniae -F habitat=URINE ${o}/api/v1/predict`);
   $("#ex-py").textContent = `import requests\nbase = "${o}/api/v1"\nr = requests.post(f"{base}/predict", data={"species": "ecoli", "habitat": "URINE"},\n                  files={"file": open("genome.fasta", "rb")}).json()\nprint(r["septatype"], r["analysis"]["mlst"]["st"], r["prediction"]["call"])`;
 };
 
@@ -793,13 +797,13 @@ INIT.curate = () => {
       };
       $("#c-table").innerHTML = `<tr><th>Submission</th><th>Isolate</th><th>Ciprotype</th><th>ST</th><th>Prediction</th><th>Lab</th><th>Status</th><th>Decision</th></tr>` +
         (d.rows.length ? d.rows.map(r => `<tr><td class="nw">${esc(r.job_id)}<span class="alias">submitted ${esc(r.created)}</span></td>
-          <td>${esc(r.genome_id || "no ID")}<span class="alias">${esc(SHORT[r.species])}, ${esc(SITE[r.habitat])}, ${esc(r.country || "-")} ${esc(r.year || "")}</span>
+          <td>${esc(r.genome_id || "no ID")}<span class="alias">${speciesText(SHORT[r.species])}, ${esc(SITE[r.habitat])}, ${esc(r.country || "-")} ${esc(r.year || "")}</span>
             <span class="alias">${esc(r.submitter || "-")}${r.affiliation ? ", " + esc(r.affiliation) : ""}${r.email ? " (" + esc(r.email) + ")" : ""}</span>${r.consent_version ? `<span class="alias">consent ${esc(r.consent_version)}, ${esc(r.consent_at || "")}</span>` : `<span class="alias">no consent recorded</span>`}${r.publication ? `<span class="alias"><a href="${esc(r.publication)}" target="_blank" rel="noopener">${esc(r.publication.replace(/^https?:\/\//, ""))}</a></span>` : ""}</td>
           <td class="mono nw">${mutSep(r.septatype)}${r.status === "approved" ? "" : r.ref_n ? `<span class="alias">in reference (n=${r.ref_n})</span>` : `<span class="alias">new ciprotype</span>`}</td>
           <td class="nw">${esc(r.st || "-")}</td>
           <td>${r.call ? badge(r.call, 1) : "-"}<span class="alias">${esc(r.tier || "")}</span></td>
           <td>${r.lab_phenotype ? badge(r.lab_phenotype, 1) : "-"}${r.matches === 0 ? `<span class="alias">disagrees</span>` : ""}</td>
-          <td>${esc(LABEL[r.status] || r.status)}${r.decided ? `<span class="alias">decided ${esc(r.decided)}${r.decided_by ? ` by ${esc(r.decided_by)}` : ""}</span>` : ""}${r.curator_note ? `<span class="alias">${esc(r.curator_note)}</span>` : ""}</td>
+          <td>${esc(LABEL[r.status] || r.status)}${r.decided ? `<span class="alias">decided ${esc(r.decided)}${r.decided_by ? ` by ${esc(r.decided_by)}` : ""}</span>` : ""}${r.curator_note ? `<span class="alias">${speciesText(r.curator_note)}</span>` : ""}</td>
           <td>${actions(r)}</td></tr>`).join("")
           : `<tr><td colspan="8" class="muted">Nothing in this list.</td></tr>`);
       $$("#c-table button[data-a]").forEach(b => b.onclick = async () => {
@@ -811,9 +815,9 @@ INIT.curate = () => {
           LOADED.browse = false; LOADED.home = false; LOADED.analyze = false;
           if (b.dataset.a === "approve") META.counts.genomes += 1; else if (res.revoked) META.counts.genomes -= 1;
           load();
-        } catch (e) { $("#c-err").innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+        } catch (e) { $("#c-err").innerHTML = `<div class="err">${speciesText(e.message)}</div>`; }
       });
-    } catch (e) { $("#c-err").innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+    } catch (e) { $("#c-err").innerHTML = `<div class="err">${speciesText(e.message)}</div>`; }
   };
   const pstatus = async () => {
     const tk = $("#c-token").value.trim(); if (!tk) return;
@@ -828,7 +832,7 @@ INIT.curate = () => {
     $("#c-err").innerHTML = ""; const tk = tokenOk(); if (!tk) return;
     try { const s = await api("/api/v1/admin/bvbrc/load", { method: "POST", headers: { "X-Admin-Token": tk } });
       $("#c-bvs").textContent = s.loaded ? "Already loaded." : "Started. Check the Browse page in a minute."; }
-    catch (e) { $("#c-err").innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+    catch (e) { $("#c-err").innerHTML = `<div class="err">${speciesText(e.message)}</div>`; }
   };
 };
 
@@ -840,6 +844,6 @@ INIT.curate = () => {
     LOADED.home = false;
     route();
   } catch (e) {
-    $("#main").innerHTML = `<div class="band"><div class="err">${esc(e.message)}</div></div>`;
+    $("#main").innerHTML = `<div class="band"><div class="err">${speciesText(e.message)}</div></div>`;
   }
 })();

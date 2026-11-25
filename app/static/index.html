@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css?v=theory-table-2">
+<link rel="stylesheet" href="/static/style.css?v=predict-display-1">
 </head>
 <body>
 <header class="top"><div class="top-in">
@@ -66,7 +66,7 @@
   <div class="grid2">
     <form class="band" id="pf" autocomplete="off">
       <div class="row2">
-        <div><label for="sp">Species</label><select id="sp"></select></div>
+        <div><label for="sp">Species</label><select class="species-select" id="sp"></select></div>
         <div><label for="hb">Isolation source</label><select id="hb"></select></div>
       </div>
       <div id="refwarn"></div>
@@ -90,7 +90,7 @@
         <textarea id="bv-ids" placeholder="562.7710&#10;624.1885&#10;573.24308" style="min-height:96px"></textarea>
         <p class="muted" style="font-size:.9rem;margin-top:6px">Type one ID, or several separated by spaces, commas or new lines (up to 10). The assembly is fetched from BV-BRC. The species you chose above is checked against the BV-BRC record: if they differ, you get no result. Needs a BV-BRC genome ID such as 562.7710, not a name.</p>
       </div>
-      <div id="m-paste" style="display:none"><label for="seq">Nucleotide FASTA</label><textarea id="seq" placeholder=">gyrA&#10;ATGAGCGAC..."></textarea><p class="muted" style="font-size:.85rem;margin:4px 0 0">Up to <span id="paste-mb">10</span> MB of pasted sequence, enough for a whole genome. For larger sequence upload a file.</p></div>
+      <div id="m-paste" style="display:none"><label for="seq">Nucleotide FASTA</label><textarea id="seq" placeholder=">gyrA&#10;ATGAGCGAC..."></textarea><p class="muted" style="font-size:.85rem;margin:4px 0 0">Maximum <span id="paste-mb">10</span> MB.</p></div>
       <div id="m-gene">
         <details><summary>Gene sequences only? Set the qnr status yourself</summary>
           <p class="muted" style="font-size:.9rem">A gene-only file cannot show that a qnr gene is absent.</p>
@@ -126,7 +126,7 @@
   <div class="page-head"><h2>Browse the repository</h2><p>Genome IDs link to BV-BRC. The isolate name sits under each ID.</p></div>
   <div class="band">
     <div class="filters">
-      <div><label for="f-sp">Species</label><select id="f-sp"><option value="">All</option></select></div>
+      <div><label for="f-sp">Species</label><select class="species-select" id="f-sp"><option value="">All</option></select></div>
       <div><label for="f-hb">Isolation source</label><select id="f-hb"><option value="">All</option></select></div>
       <div><label for="f-st">Sequence type</label><input type="search" id="f-st" class="caps" list="dl-st" placeholder="All, or type ST131" autocomplete="off" autocapitalize="characters"><datalist id="dl-st"></datalist></div>
       <div><label for="f-country">Country</label><select id="f-country"><option value="">All</option></select></div>
@@ -153,14 +153,14 @@
   <div class="page-head"><h2>Analyze</h2><p>Ciprotype frequency by isolation source and the geography of a clone or ciprotype. Approved submissions are included.</p></div>
   <div class="band">
     <h3>Ciprotype frequency by isolation source</h3>
-    <div class="row2"><div><label for="a-sp">Species</label><select id="a-sp"></select></div></div>
+    <div class="row2"><div><label for="a-sp">Species</label><select class="species-select" id="a-sp"></select></div></div>
     <div class="legend" id="a-legend"></div>
     <div id="a-bars"></div>
   </div>
   <div class="band">
     <h3>Where is it found?</h3>
     <div class="filters">
-      <div><label for="g-sp">Species</label><select id="g-sp"><option value="">All</option></select></div>
+      <div><label for="g-sp">Species</label><select class="species-select" id="g-sp"><option value="">All</option></select></div>
       <div><label for="g-st">Sequence type</label><input type="search" id="g-st" list="dl-st2" placeholder="All, or type ST131" autocomplete="off"><datalist id="dl-st2"></datalist></div>
       <div><label for="g-sep">Ciprotype</label><input type="search" id="g-sep" list="dl-sep" placeholder="All, or type S-D-S-E-L-0-0" autocomplete="off"><datalist id="dl-sep"></datalist></div>
       <div><label for="g-ph">Phenotype</label><select id="g-ph"><option value="" selected>All</option><option>Resistant</option><option>Susceptible</option></select></div>
@@ -177,7 +177,7 @@
   <div class="grid2">
     <form class="band" id="sf" autocomplete="off">
       <div class="row2">
-        <div><label for="s-sp">Species</label><select id="s-sp" required></select></div>
+        <div><label for="s-sp">Species</label><select class="species-select" id="s-sp" required></select></div>
         <div><label for="s-hb">Isolation source</label><select id="s-hb" required></select></div>
       </div>
       <label for="s-gid">BV-BRC genome ID (optional)</label>
@@ -232,7 +232,7 @@
       <div><svg class="pocket" id="pocket" viewBox="0 0 640 330" role="img" aria-label="Schematic of the ciprofloxacin binding pocket"></svg>
         <p class="muted" style="font-size:.82rem;margin-top:6px">Schematic reading of the grammar, not a structure calculation. Compare with Figure 6 of the paper.</p></div>
       <div>
-        <label for="t-sp">Species</label><select id="t-sp" style="margin-bottom:8px"></select>
+        <label for="t-sp">Species</label><select class="species-select" id="t-sp" style="margin-bottom:8px"></select>
         <label>Common four-residue patterns (tap one)</label><div class="pick" id="t-pick"></div>
         <label for="t-custom">Or type four residues (GyrA-83, GyrA-87, ParC-80, ParC-84)</label>
         <input type="text" id="t-custom" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="LNIE" style="text-transform:uppercase;font-family:var(--mono);margin-bottom:12px">
@@ -266,6 +266,7 @@
     </table></div>
     <p>Up to four representative alleles per locus help locate the gene in the assembly. CiproTyper looks up the extracted sequence and searches the full allele set for a located gene if the lookup fails. A tilde (~) marks a nearest-allele match. CiproTyper reads local allele and profile files distributed through <a href="https://github.com/tseemann/mlst" target="_blank" rel="noopener">Torsten Seemann’s open-source <i>mlst</i> repository</a>.</p>
     <h4>Why an ST may be unassigned</h4>
+    <p>For ST assignment, upload or paste a whole-genome assembly that includes all seven MLST genes. If a gene-only file or pasted sequence lacks any of these genes, or you enter only amino acid letters, CiproTyper can still predict a phenotype when enough markers are available, but it cannot assign an ST.</p>
     <p>First check for missing or fragmented genes, ambiguous bases and typing errors. If all seven loci are readable, the profile may already have an ST assigned after <b>31 December 2024</b>. Changes to PubMLST’s redistribution terms limit the PubMLST-derived data bundled by <a href="https://github.com/tseemann/mlst/releases/tag/v2.33.0" target="_blank" rel="noopener">Torsten Seemann’s <i>mlst</i> project</a> to records available by that date. Another possibility is a new allele or combination. Check the current scheme before reporting a new ST. See the <a href="#/references">scheme references</a>.</p>
   </div>
   <div class="band">
@@ -433,7 +434,7 @@
 
 </main>
 
-<script src="/static/app.js?v=home-20261116"></script>
+<script src="/static/app.js?v=predict-display-1"></script>
 
 <dialog id="consent" class="consent" aria-labelledby="consent-title">
   <h2 id="consent-title">Before you submit</h2>
