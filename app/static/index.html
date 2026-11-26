@@ -273,7 +273,6 @@
     <h3>How to read a sequence warning</h3>
     <p><b>Chromosomal genes.</b> A match to <i>gyrA</i>, <i>parC</i> or <i>recN</i> counts as detected from 75% nucleotide identity. If a detected gene matches the selected species reference at less than 90% identity (the default cutoff), CiproTyper displays “Please verify the species selected and resubmit” and withholds the ST, phenotype and checkpoints. Coverage below 90% of the reference gene also raises a warning.</p>
     <p><b>MLST matches.</b> For inputs of at least 1,000,000 bp, a mismatch warning appears if any of the seven MLST loci in the selected species’ scheme is missing or matches at less than 90% nucleotide identity. These matches help check whether the assembly is consistent with the selected species. If MLST fails because of a processing error, CiproTyper may still report a phenotype without assigning an ST.</p>
-    <p><b>Partial sequences.</b> A missing chromosomal gene can leave Checkpoint 1 inconclusive. A readable RecN-346 or a detected qnr marker may still allow a limited prediction from Checkpoints 2 and 3 if the input passes the reference checks. If RecN-346 is unreadable and neither qnr marker is present, this partial route gives no phenotype. The qnr screen requires at least 80% identity and 90% reference coverage.</p>
   </div>
   <div class="band">
     <h3>Limits</h3>
